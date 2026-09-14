@@ -1,6 +1,6 @@
-import { ApolloServer } from '@apollo/server';
-import { startServerAndCreateNextHandler } from '@as-integrations/next';
-import { Pool } from 'pg';
+import { ApolloServer } from "@apollo/server";
+import { startServerAndCreateNextHandler } from "@as-integrations/next";
+import { Pool } from "pg";
 
 // ---------------------------------------------------------------
 // Koneksi ke Neon — WAJIB pakai connection string versi POOLED
@@ -56,32 +56,51 @@ const typeDefs = `#graphql
 `;
 
 // ---------------------------------------------------------------
+// Latihan Mandiri Sesi 05 — counter untuk membuktikan N+1 Problem
+// pada resolver relasi Pelanggan.penjualan.
+// queryPelangganCallCount  -> berapa kali resolver ROOT (Query.pelanggan) dipanggil (harus selalu 1)
+// pelangganPenjualanResolverCallCount -> berapa kali resolver RELASI (Pelanggan.penjualan) dipanggil (harus = N, jumlah pelanggan)
+// ---------------------------------------------------------------
+let queryPelangganCallCount = 0;
+let pelangganPenjualanResolverCallCount = 0;
+
+// ---------------------------------------------------------------
 // Resolvers — identik dengan versi Render
 // ---------------------------------------------------------------
 const resolvers = {
   Query: {
     pelanggan: async () => {
-      const result = await pool.query('SELECT * FROM pelanggan ORDER BY id');
+      queryPelangganCallCount++;
+      console.log(
+        `[N+1 counter] Query.pelanggan (ROOT) dipanggil — total: ${queryPelangganCallCount}`,
+      );
+      const result = await pool.query("SELECT * FROM pelanggan ORDER BY id");
       return result.rows;
     },
     pelangganById: async (_, { id }) => {
-      const result = await pool.query('SELECT * FROM pelanggan WHERE id = $1', [id]);
+      const result = await pool.query("SELECT * FROM pelanggan WHERE id = $1", [
+        id,
+      ]);
       return result.rows[0];
     },
     produk: async () => {
-      const result = await pool.query('SELECT * FROM produk ORDER BY id');
+      const result = await pool.query("SELECT * FROM produk ORDER BY id");
       return result.rows;
     },
     produkById: async (_, { id }) => {
-      const result = await pool.query('SELECT * FROM produk WHERE id = $1', [id]);
+      const result = await pool.query("SELECT * FROM produk WHERE id = $1", [
+        id,
+      ]);
       return result.rows[0];
     },
     penjualan: async () => {
-      const result = await pool.query('SELECT * FROM penjualan ORDER BY id');
+      const result = await pool.query("SELECT * FROM penjualan ORDER BY id");
       return result.rows;
     },
     penjualanById: async (_, { id }) => {
-      const result = await pool.query('SELECT * FROM penjualan WHERE id = $1', [id]);
+      const result = await pool.query("SELECT * FROM penjualan WHERE id = $1", [
+        id,
+      ]);
       return result.rows[0];
     },
   },
@@ -89,9 +108,13 @@ const resolvers = {
   Pelanggan: {
     noTelepon: (parent) => parent.no_telepon,
     penjualan: async (parent) => {
+      pelangganPenjualanResolverCallCount++;
+      console.log(
+        `[N+1 counter] Pelanggan.penjualan (RELASI) dipanggil untuk pelanggan id=${parent.id} (${parent.nama}) — total: ${pelangganPenjualanResolverCallCount}`,
+      );
       const result = await pool.query(
-        'SELECT * FROM penjualan WHERE pelanggan_id = $1 ORDER BY id',
-        [parent.id]
+        "SELECT * FROM penjualan WHERE pelanggan_id = $1 ORDER BY id",
+        [parent.id],
       );
       return result.rows;
     },
@@ -102,27 +125,28 @@ const resolvers = {
     harga: (parent) => parseFloat(parent.harga),
     penjualan: async (parent) => {
       const result = await pool.query(
-        'SELECT * FROM penjualan WHERE produk_id = $1 ORDER BY id',
-        [parent.id]
+        "SELECT * FROM penjualan WHERE produk_id = $1 ORDER BY id",
+        [parent.id],
       );
       return result.rows;
     },
   },
 
   Penjualan: {
-    total: (parent) => (parent.total !== null ? parseFloat(parent.total) : null),
+    total: (parent) =>
+      parent.total !== null ? parseFloat(parent.total) : null,
     tanggal: (parent) =>
       parent.tanggal instanceof Date
-        ? parent.tanggal.toISOString().split('T')[0]
+        ? parent.tanggal.toISOString().split("T")[0]
         : parent.tanggal,
     pelanggan: async (parent) => {
-      const result = await pool.query('SELECT * FROM pelanggan WHERE id = $1', [
+      const result = await pool.query("SELECT * FROM pelanggan WHERE id = $1", [
         parent.pelanggan_id,
       ]);
       return result.rows[0];
     },
     produk: async (parent) => {
-      const result = await pool.query('SELECT * FROM produk WHERE id = $1', [
+      const result = await pool.query("SELECT * FROM produk WHERE id = $1", [
         parent.produk_id,
       ]);
       return result.rows[0];
@@ -144,11 +168,17 @@ const apolloHandler = startServerAndCreateNextHandler(server);
 // Apollo Sandbox (studio.apollographql.com) bisa connect ke sini.
 // ---------------------------------------------------------------
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', 'https://studio.apollographql.com');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Apollo-Require-Preflight');
+  res.setHeader(
+    "Access-Control-Allow-Origin",
+    "https://studio.apollographql.com",
+  );
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Apollo-Require-Preflight",
+  );
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     res.status(200).end();
     return;
   }
