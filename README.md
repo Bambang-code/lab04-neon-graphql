@@ -1,68 +1,80 @@
-# Lab 04 — GraphQL API (Vercel + Neon)
+# Lab 05 - Query dan Mutation Lanjutan GraphQL
 
-Versi Vercel dari project Lab 04. Schema & resolver-nya identik dengan
-versi Render, cuma cara membungkusnya beda: pakai Next.js API route
-(`pages/api/graphql.js`) lewat `@as-integrations/next`, sesuai panduan
-alternatif deployment di modul lab.
+Pengembangan lanjutan dari Lab 04 berupa GraphQL API yang terhubung ke
+PostgreSQL Neon dan dideploy melalui Vercel. API menggunakan Next.js API Route,
+Apollo Server, dan skema `pelanggan`, `produk`, serta `penjualan`.
 
-Skema: `pelanggan`, `produk`, `penjualan` (dari `schema.sql` kelompok —
-bukan tabel contoh modul). Relasi `penjualan → pelanggan`,
-`penjualan → produk`, dan arah baliknya, semua punya resolver sendiri.
+## Identitas
 
-## 1. Ambil connection string versi POOLED
+- Nama: Bambang Herlambang
+- NRP: 503024019
 
-Di dashboard Neon → Connect → Postgres database, **nyalakan toggle
-"Connection pooling"**. Hostname-nya akan berubah jadi ada akhiran
-`-pooler`, misalnya:
+## Deployment
 
-```
-postgresql://neondb_owner:xxxx@ep-xxxx-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require
-```
+- Endpoint GraphQL:
+  [https://lab04-neon-graphql.vercel.app/api/graphql](https://lab04-neon-graphql.vercel.app/api/graphql)
+- Apollo Sandbox:
+  [Buka GraphQL Explorer](https://studio.apollographql.com/sandbox/explorer?endpoint=https://lab04-neon-graphql.vercel.app/api/graphql)
 
-Ini beda dari versi yang dipakai di project Render — Vercel itu
-serverless, jadi butuh connection pooling supaya tidak cepat kehabisan
-koneksi ke Neon.
+Endpoint telah mengaktifkan introspection dan CORS untuk
+`studio.apollographql.com`, sehingga dapat diuji langsung melalui Apollo
+Sandbox.
 
-## 2. Jalankan lokal
+## Fitur
 
-```bash
-npm install
-cp .env.example .env.local
-# edit .env.local, isi DATABASE_URL dengan connection string pooled tadi
-npm run dev
-```
+### Query
 
-Buka `http://localhost:3000/api/graphql` untuk masuk ke Apollo Sandbox
-bawaan Apollo Server.
+- Menampilkan seluruh data pelanggan, produk, dan penjualan.
+- Mencari pelanggan, produk, atau penjualan berdasarkan ID.
+- Memfilter produk berdasarkan kategori melalui `produk(kategori: String)`.
+- Menampilkan relasi antartabel melalui nested query:
+  `penjualan -> pelanggan` dan `penjualan -> produk`.
 
-Catatan: Next.js baca env var dari `.env.local`, **bukan** `.env` biasa.
+### Mutation
 
-## 3. Contoh nested query
+- `createProduk` untuk menambahkan produk ke Neon.
+- `updateProduk` untuk memperbarui sebagian atau seluruh data produk.
+- `deleteProduk` untuk menghapus produk berdasarkan ID.
 
-```graphql
-query {
-  penjualan {
-    id
-    jumlah
-    total
-    status
-    pelanggan {
-      nama
-      kota
-    }
-    produk {
-      namaProduk
-      harga
-    }
-  }
-}
-```
+Semua operasi database menggunakan parameterized query. Mutation update
+memakai `COALESCE` agar field yang tidak dikirim tidak menimpa nilai lama.
 
-## 4. Mutation dan filter produk (Lab 05)
+## Teknologi
 
-API mendukung penambahan, perubahan, dan penghapusan produk langsung di
-Neon melalui mutation `createProduk`, `updateProduk`, dan `deleteProduk`.
-Query `produk` juga dapat difilter memakai argumen kategori, misalnya:
+- Next.js 16
+- Apollo Server 5
+- GraphQL
+- PostgreSQL Neon
+- Vercel
+
+## Menjalankan Secara Lokal
+
+1. Instal dependency:
+
+   ```bash
+   npm install
+   ```
+
+2. Salin konfigurasi environment:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+3. Isi `DATABASE_URL` pada `.env.local` menggunakan connection string Neon
+   versi pooled.
+
+4. Jalankan development server:
+
+   ```bash
+   npm run dev
+   ```
+
+5. Buka `http://localhost:3000/api/graphql`.
+
+## Contoh Operasi
+
+### Filter Produk
 
 ```graphql
 query {
@@ -76,63 +88,100 @@ query {
 }
 ```
 
-Contoh mutation:
+### Membuat Produk
 
 ```graphql
 mutation {
   createProduk(
     input: {
-      namaProduk: "Produk Uji"
-      kategori: "Latihan"
+      namaProduk: "Produk Latihan Mandiri"
+      kategori: "Latihan Mandiri"
       harga: 10000
       stok: 5
     }
   ) {
     id
     namaProduk
+    kategori
+    harga
+    stok
   }
 }
 ```
 
-## 5. Deploy ke Vercel
+### Memperbarui Produk
 
-**Lewat dashboard (tanpa CLI):**
-
-1. Push folder ini ke repo GitHub baru (repo terpisah dari yang dipakai
-   untuk versi Render, atau branch terpisah — jangan dicampur).
-2. Buka [vercel.com](https://vercel.com) → login pakai akun GitHub →
-   **Add New... → Project**.
-3. Pilih repo-nya → Vercel otomatis mendeteksi framework Next.js, biarkan
-   default (Build Command `next build`, Output otomatis).
-4. Di bagian **Environment Variables**, tambahkan:
-   - Key: `DATABASE_URL`
-   - Value: connection string pooled dari langkah 1
-5. Klik **Deploy**. Tidak perlu kartu kredit untuk tier Hobby (gratis).
-6. Setelah selesai, buka
-   `https://<nama-project>.vercel.app/api/graphql` untuk cek Sandbox-nya
-   jalan.
-
-**Lewat CLI (opsional):**
-
-```bash
-npm install -g vercel
-vercel
-vercel env add DATABASE_URL
-vercel --prod
+```graphql
+mutation {
+  updateProduk(
+    id: "19"
+    input: {
+      namaProduk: "Produk Latihan Mandiri Updated"
+      harga: 12500
+      stok: 8
+    }
+  ) {
+    id
+    namaProduk
+    kategori
+    harga
+    stok
+  }
+}
 ```
 
-## 6. Link submission
+### Menghapus Produk
 
+```graphql
+mutation {
+  deleteProduk(id: "19")
+}
 ```
-https://studio.apollographql.com/sandbox/explorer?endpoint=https://<nama-project>.vercel.app/api/graphql
+
+### Query Relasi
+
+```graphql
+query {
+  penjualan {
+    id
+    jumlah
+    total
+    status
+    pelanggan {
+      id
+      nama
+      kota
+    }
+    produk {
+      id
+      namaProduk
+      kategori
+      harga
+    }
+  }
+}
 ```
 
-CORS di `pages/api/graphql.js` sudah diset untuk mengizinkan domain
-`studio.apollographql.com`, jadi link ini bisa dibuka dosen tanpa error
-cross-origin.
+## Bukti Latihan Mandiri
 
-## 7. Refleksi (tulis sendiri, 3–5 kalimat)
+Enam langkah pengujian dilakukan dengan pola mutation lalu query ulang:
 
-Sama seperti versi Render — bandingkan jumlah field yang dikembalikan
-`{ produk { namaProduk } }` di GraphQL vs REST endpoint biasa. Tulis versi
-kamu sendiri berdasarkan hasil coba-coba di Sandbox.
+1. Membuat produk.
+2. Memastikan produk muncul pada query.
+3. Memperbarui produk.
+4. Memastikan perubahan tersimpan.
+5. Menghapus produk.
+6. Memastikan produk sudah tidak tersedia.
+
+Dokumentasi lengkap tersedia pada:
+
+- [Screenshot dan operasi GraphQL](./bukti-latihan/README.md)
+- [Laporan PDF](./output/pdf/Laporan_Tugas_Sesi_5_Bambang_Herlambang.pdf)
+
+## Refleksi
+
+Mutation GraphQL lebih rumit daripada endpoint REST biasa karena input type,
+tipe hasil, resolver, dan selection set harus didefinisikan secara konsisten.
+GraphQL tetap lebih fleksibel karena client dapat memilih field hasil yang
+dibutuhkan melalui satu endpoint. Keberhasilan mutation juga perlu diverifikasi
+dengan query ulang agar perubahan pada database benar-benar terbukti tersimpan.
