@@ -45,13 +45,33 @@ const typeDefs = `#graphql
     produk: Produk!
   }
 
+  input CreateProdukInput {
+    namaProduk: String!
+    kategori: String
+    harga: Float!
+    stok: Int! = 0
+  }
+
+  input UpdateProdukInput {
+    namaProduk: String
+    kategori: String
+    harga: Float
+    stok: Int
+  }
+
   type Query {
     pelanggan: [Pelanggan!]!
     pelangganById(id: ID!): Pelanggan
-    produk: [Produk!]!
+    produk(kategori: String): [Produk!]!
     produkById(id: ID!): Produk
     penjualan: [Penjualan!]!
     penjualanById(id: ID!): Penjualan
+  }
+
+  type Mutation {
+    createProduk(input: CreateProdukInput!): Produk!
+    updateProduk(id: ID!, input: UpdateProdukInput!): Produk
+    deleteProduk(id: ID!): Boolean!
   }
 `;
 
@@ -83,8 +103,13 @@ const resolvers = {
       ]);
       return result.rows[0];
     },
-    produk: async () => {
-      const result = await pool.query("SELECT * FROM produk ORDER BY id");
+    produk: async (_, { kategori }) => {
+      const result = kategori
+        ? await pool.query(
+            "SELECT * FROM produk WHERE kategori = $1 ORDER BY id",
+            [kategori],
+          )
+        : await pool.query("SELECT * FROM produk ORDER BY id");
       return result.rows;
     },
     produkById: async (_, { id }) => {
@@ -102,6 +127,43 @@ const resolvers = {
         id,
       ]);
       return result.rows[0];
+    },
+  },
+
+  Mutation: {
+    createProduk: async (_, { input }) => {
+      const result = await pool.query(
+        `INSERT INTO produk (nama_produk, kategori, harga, stok)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [input.namaProduk, input.kategori ?? null, input.harga, input.stok],
+      );
+      return result.rows[0];
+    },
+    updateProduk: async (_, { id, input }) => {
+      const result = await pool.query(
+        `UPDATE produk
+         SET nama_produk = COALESCE($1, nama_produk),
+             kategori = COALESCE($2, kategori),
+             harga = COALESCE($3, harga),
+             stok = COALESCE($4, stok)
+         WHERE id = $5
+         RETURNING *`,
+        [
+          input.namaProduk ?? null,
+          input.kategori ?? null,
+          input.harga ?? null,
+          input.stok ?? null,
+          id,
+        ],
+      );
+      return result.rows[0] ?? null;
+    },
+    deleteProduk: async (_, { id }) => {
+      const result = await pool.query("DELETE FROM produk WHERE id = $1", [
+        id,
+      ]);
+      return result.rowCount > 0;
     },
   },
 

@@ -58,7 +58,43 @@ query {
 }
 ```
 
-## 4. Deploy ke Vercel
+## 4. Mutation dan filter produk (Lab 05)
+
+API mendukung penambahan, perubahan, dan penghapusan produk langsung di
+Neon melalui mutation `createProduk`, `updateProduk`, dan `deleteProduk`.
+Query `produk` juga dapat difilter memakai argumen kategori, misalnya:
+
+```graphql
+query {
+  produk(kategori: "Minuman") {
+    id
+    namaProduk
+    kategori
+    harga
+    stok
+  }
+}
+```
+
+Contoh mutation:
+
+```graphql
+mutation {
+  createProduk(
+    input: {
+      namaProduk: "Produk Uji"
+      kategori: "Latihan"
+      harga: 10000
+      stok: 5
+    }
+  ) {
+    id
+    namaProduk
+  }
+}
+```
+
+## 5. Deploy ke Vercel
 
 **Lewat dashboard (tanpa CLI):**
 
@@ -85,7 +121,7 @@ vercel env add DATABASE_URL
 vercel --prod
 ```
 
-## 5. Link submission
+## 6. Link submission
 
 ```
 https://studio.apollographql.com/sandbox/explorer?endpoint=https://<nama-project>.vercel.app/api/graphql
@@ -95,7 +131,7 @@ CORS di `pages/api/graphql.js` sudah diset untuk mengizinkan domain
 `studio.apollographql.com`, jadi link ini bisa dibuka dosen tanpa error
 cross-origin.
 
-## 6. Refleksi (tulis sendiri, 3–5 kalimat)
+## 7. Refleksi (tulis sendiri, 3–5 kalimat)
 
 Sama seperti versi Render — bandingkan jumlah field yang dikembalikan
 `{ produk { namaProduk } }` di GraphQL vs REST endpoint biasa. Tulis versi
