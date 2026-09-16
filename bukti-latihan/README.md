@@ -3,13 +3,13 @@
 Apollo Sandbox:
 [Buka endpoint deployment](https://studio.apollographql.com/sandbox/explorer?endpoint=https://lab04-neon-graphql.vercel.app/api/graphql)
 
-Latihan menggunakan produk uji dengan ID `18` dan kategori
+Latihan menggunakan produk uji dengan ID `19` dan kategori
 `Latihan Mandiri`. Nama operasi disesuaikan dengan schema proyek Lab 04,
 yaitu `createProduk`, `updateProduk`, dan `deleteProduk`.
 
-## Enam langkah pengujian
+## Enam langkah pengujian CRUD
 
-1. `createProduk` berhasil membuat produk ID `18`.
+1. `createProduk` berhasil membuat produk ID `19`.
    [Screenshot](./01-create-produk.png)
 2. Query kategori menampilkan produk yang baru dibuat.
    [Screenshot](./02-query-setelah-create.png)
@@ -23,13 +23,19 @@ yaitu `createProduk`, `updateProduk`, dan `deleteProduk`.
 6. Query terakhir mengembalikan array kosong (`produk: []`).
    [Screenshot](./06-query-setelah-delete.png)
 
+## Bukti relasi tabel
+
+Query nested `penjualan` menampilkan data dari tiga tabel yang saling
+berhubungan: `penjualan`, `pelanggan`, dan `produk`.
+[Screenshot](./07-query-relasi-penjualan-pelanggan-produk.png)
+
 ## Operasi GraphQL
 
 ```graphql
 mutation {
   createProduk(
     input: {
-      namaProduk: "Produk Latihan Mandiri Apollo"
+      namaProduk: "Produk Latihan Mandiri"
       kategori: "Latihan Mandiri"
       harga: 10000
       stok: 5
@@ -59,9 +65,9 @@ query {
 ```graphql
 mutation {
   updateProduk(
-    id: "18"
+    id: "19"
     input: {
-      namaProduk: "Produk Latihan Mandiri Apollo Updated"
+      namaProduk: "Produk Latihan Mandiri Updated"
       harga: 12500
       stok: 8
     }
@@ -77,7 +83,32 @@ mutation {
 
 ```graphql
 mutation {
-  deleteProduk(id: "18")
+  deleteProduk(id: "19")
+}
+```
+
+Query berikut membuktikan relasi `penjualan.pelanggan_id` ke `pelanggan.id`
+dan `penjualan.produk_id` ke `produk.id`:
+
+```graphql
+query {
+  penjualan {
+    id
+    jumlah
+    total
+    status
+    pelanggan {
+      id
+      nama
+      kota
+    }
+    produk {
+      id
+      namaProduk
+      kategori
+      harga
+    }
+  }
 }
 ```
 
