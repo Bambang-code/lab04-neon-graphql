@@ -5,14 +5,15 @@
 1. [`01-mutation-tanpa-authorization.png`](./01-mutation-tanpa-authorization.png):
    hasil `createProduk` tanpa header `Authorization` menunjukkan
    `UNAUTHENTICATED`. Screenshot diambil dari Apollo Sandbox yang terhubung
-   ke server lokal.
-2. `02-mutation-dengan-jwt.png` (belum diambil): login melalui `/auth/login`, salin JWT
-   dari `/auth/callback`, pasang header `Authorization: Bearer <token>`
-   di Apollo Sandbox, lalu jalankan `createProduk` dan tangkap hasilnya.
+   ke deployment Vercel.
+2. [`02-mutation-dengan-jwt.png`](./02-mutation-dengan-jwt.png):
+   setelah login melalui `/auth/login`, JWT dari `/auth/callback` dipasang
+   sebagai header `Authorization: Bearer <token>` di Apollo Sandbox.
+   Mutation `createProduk` berhasil dan mengembalikan data produk.
 
-Sebelum mengambil screenshot kedua, sembunyikan nilai token pada panel header
-agar kredensial tidak terekam. Setelahnya, hapus produk uji dengan
-`deleteProduk` menggunakan JWT yang sama.
+Nilai token pada panel header disamarkan agar kredensial tidak terekam.
+Produk uji dihapus dengan `deleteProduk` menggunakan JWT yang sama setelah
+screenshot diambil.
 
 ## Refleksi
 

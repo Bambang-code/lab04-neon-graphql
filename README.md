@@ -214,7 +214,7 @@ dengan query ulang agar perubahan pada database benar-benar terbukti tersimpan.
 
 ## Latihan Mandiri Sesi 07
 
-Screenshot mutation tanpa token dan refleksi singkat tersedia di
-[bukti-sesi07/README.md](./bukti-sesi07/README.md). Screenshot sukses masih
-memerlukan GitHub OAuth App dan login sungguhan; JWT dari respons callback
-tidak boleh disertakan dalam screenshot atau commit.
+Dua screenshot mutation (ditolak tanpa token dan berhasil dengan JWT dari
+login GitHub) serta refleksi singkat tersedia di
+[bukti-sesi07/README.md](./bukti-sesi07/README.md). Nilai JWT disamarkan
+pada screenshot dan tidak disertakan dalam commit.
