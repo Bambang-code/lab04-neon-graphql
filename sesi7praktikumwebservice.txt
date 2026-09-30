@@ -1,0 +1,135 @@
+web-service · panduan
+← Kembali ke daftar lab
+Beranda
+/
+Praktikum
+/
+lab-07
+LAB 07
+Implementasi OAuth2
+Melindungi API yang sudah Anda bangun sejak lab 04 — kali ini hanya pengguna yang sudah login lewat GitHub yang boleh menjalankan mutation seperti createProduct.
+
+Durasi 100 menit
+Format Praktikum Berkelompok
+Terkait Lab 04-05 — GraphQL Sederhana
+Kaitan dengan lab sebelumnya: Lab ini melindungi endpoint yang sudah ada dari lab 04-05 (GraphQL server Anda). Anda tidak perlu membuat sistem login dari nol — cukup manfaatkan OAuth App milik provider (GitHub) yang sudah menangani autentikasi pengguna untuk Anda.
+Tujuan Pembelajaran
+01
+Mahasiswa mampu menjelaskan alur OAuth2 Authorization Code secara praktis, bukan cuma teori.
+02
+Mahasiswa mampu mendaftarkan OAuth App di GitHub dan mendapatkan Client ID & Client Secret.
+03
+Mahasiswa mampu mengimplementasikan endpoint callback yang menukar authorization code dengan access token.
+04
+Mahasiswa mampu melindungi resolver GraphQL miliknya sendiri supaya hanya bisa diakses pengguna yang sudah terautentikasi.
+Materi Singkat
+Alur OAuth2 Authorization Code
+1. Redirect ke Provider
+Aplikasi Anda mengarahkan pengguna ke halaman login GitHub, membawa client_id dan redirect_uri aplikasi Anda.
+
+2. Pengguna Login & Memberi Izin
+Pengguna login di GitHub (bukan di aplikasi Anda) dan menyetujui akses yang diminta — aplikasi Anda tidak pernah melihat password pengguna.
+
+3. GitHub Redirect Kembali dengan Authorization Code
+GitHub mengarahkan pengguna kembali ke redirect_uri aplikasi Anda, membawa satu kode sementara (code) di URL.
+
+4. Tukar Code dengan Access Token
+Server Anda (bukan browser pengguna) menukar code tersebut dengan access token lewat request langsung ke GitHub — inilah bagian yang membutuhkan client_secret, dan sebabnya harus dilakukan di server.
+
+5. Buat Sesi/JWT Sendiri
+Access token GitHub dipakai sekali untuk mengambil profil pengguna, lalu aplikasi Anda menerbitkan JWT-nya sendiri untuk dipakai melindungi resolver.
+
+Alat yang Dibutuhkan
+Tools Praktikum
+GitHub OAuth App
+wajib
+Didaftarkan gratis di GitHub Developer Settings, tanpa perlu approval — langsung dapat Client ID & Secret.
+Paket
+jsonwebtoken
+wajib
+Untuk menerbitkan dan memverifikasi JWT sesi aplikasi Anda sendiri.
+Langkah Praktik
+Mengimplementasikan Login & Melindungi Resolver
+01
+Daftarkan OAuth App di GitHub
+Buka GitHub → Settings → Developer settings → OAuth Apps → New OAuth App. Isi Authorization callback URL dengan URL deployment Anda dari lab 04, misalnya https://nama-app.onrender.com/auth/callback. Simpan Client ID dan Client Secret yang diberikan.
+
+02
+Buat Endpoint Login
+app.get('/auth/login', (req, res) => {
+  const url = \`https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${process.env.CALLBACK_URL}\`;
+  res.redirect(url);
+});
+03
+Buat Endpoint Callback & Tukar Token
+app.get('/auth/callback', async (req, res) => {
+  const { code } = req.query;
+
+  const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+    method: 'POST',
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: process.env.GITHUB_CLIENT_ID,
+      client_secret: process.env.GITHUB_CLIENT_SECRET,
+      code
+    })
+  });
+  const { access_token } = await tokenRes.json();
+
+  const userRes = await fetch('https://api.github.com/user', {
+    headers: { Authorization: \`Bearer ${access_token}\` }
+  });
+  const githubUser = await userRes.json();
+
+  const jwt = require('jsonwebtoken');
+  const token = jwt.sign({ username: githubUser.login }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+  res.json({ token }); // tampilkan token ke pengguna
+});
+04
+Lindungi Resolver Mutation
+Verifikasi JWT lewat context Apollo Server, lalu cek di resolver yang butuh proteksi (mis. createProduct dari lab 05):
+
+// di konfigurasi Apollo Server
+context: ({ req }) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace('Bearer ', '');
+  try {
+    const user = jwt.verify(token, process.env.JWT_SECRET);
+    return { user };
+  } catch {
+    return { user: null };
+  }
+}
+
+// di resolver createProduct
+createProduct: async (_, { input }, context) => {
+  if (!context.user) {
+    throw new Error('Unauthorized: silakan login terlebih dahulu');
+  }
+  // ...lanjutkan seperti resolver lab 05
+}
+05
+Uji Alur Lengkap
+Buka https://nama-app.onrender.com/auth/login di browser, login dengan akun GitHub, salin JWT yang ditampilkan. Di Apollo Sandbox, tambahkan header Authorization: Bearer <token>, lalu coba jalankan createProduct — bandingkan hasilnya dengan mencoba tanpa header tersebut.
+
+Catatan Keamanan
+client_secret dan JWT_SECRET wajib disimpan sebagai environment variable (bukan ditulis langsung di kode), dan jangan pernah di-commit ke GitHub. Ini murni untuk latihan kelas — untuk aplikasi produksi sungguhan, pertimbangan keamanan tambahan (rate limiting, refresh token, dst) masih diperlukan.
+Checklist Kesiapan
+OAuth App berhasil didaftarkan dan Client ID/Secret tersimpan sebagai environment variable
+Endpoint
+/auth/login
+berhasil mengarahkan ke halaman login GitHub
+Endpoint
+/auth/callback
+berhasil menukar code, mengambil profil, dan menerbitkan JWT
+Mutation dari lab 05 menolak request tanpa JWT valid, dan menerima request dengan JWT valid
+Tugas & Latihan
+Latihan Mandiri
+Ambil dua screenshot: (1) mutation yang ditolak saat dijalankan tanpa header Authorization, dan (2) mutation yang berhasil dijalankan dengan JWT valid setelah login GitHub. Tuliskan refleksi singkat (2-3 kalimat): bagian mana dari alur OAuth2 ini yang paling membingungkan saat pertama kali dicoba. Kumpulkan sebelum lab 08.
+
+Referensi Sesi Ini
+GitHub Docs — Authorizing OAuth Apps — docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+jsonwebtoken (npm) — npmjs.com/package/jsonwebtoken
+OAuth 2.0 Simplified — oauth.net/2 (overview resmi alur Authorization Code)
+Lab 07 · Web Service · Philipus Suryo Subandoro
