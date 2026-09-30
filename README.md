@@ -1,4 +1,4 @@
-# Lab 05 - Query dan Mutation Lanjutan GraphQL
+# Lab 07 - OAuth2 untuk GraphQL API
 
 Pengembangan lanjutan dari Lab 04 berupa GraphQL API yang terhubung ke
 PostgreSQL Neon dan dideploy melalui Vercel. API menggunakan Next.js API Route,
@@ -36,6 +36,9 @@ Sandbox.
 - `updateProduk` untuk memperbarui sebagian atau seluruh data produk.
 - `deleteProduk` untuk menghapus produk berdasarkan ID.
 
+Ketiga mutation memerlukan JWT aplikasi yang didapat setelah login GitHub.
+Query tetap bisa digunakan tanpa login.
+
 Semua operasi database menggunakan parameterized query. Mutation update
 memakai `COALESCE` agar field yang tidak dikirim tidak menimpa nilai lama.
 
@@ -62,15 +65,36 @@ memakai `COALESCE` agar field yang tidak dikirim tidak menimpa nilai lama.
    ```
 
 3. Isi `DATABASE_URL` pada `.env.local` menggunakan connection string Neon
-   versi pooled.
+   versi pooled. Tambahkan `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
+   `CALLBACK_URL`, dan `JWT_SECRET` sesuai contoh.
 
-4. Jalankan development server:
+4. Buat GitHub OAuth App di **Settings → Developer settings → OAuth Apps**.
+   Isi Homepage URL dengan `https://lab04-neon-graphql.vercel.app` dan
+   Authorization callback URL dengan
+   `https://lab04-neon-graphql.vercel.app/auth/callback`. Tambahkan
+   `http://localhost:3000/auth/callback` sebagai callback kedua jika ingin
+   menguji lokal. Atur empat environment variable yang sama di
+   **Vercel → Project Settings → Environment Variables** (Production).
+   Nilai `CALLBACK_URL` harus sesuai dengan lingkungan yang sedang dipakai.
+
+5. Jalankan development server:
 
    ```bash
    npm run dev
    ```
 
-5. Buka `http://localhost:3000/api/graphql`.
+6. Buka `http://localhost:3000/auth/login`, login di GitHub, lalu salin
+   nilai `token` dari respons callback. Token berlaku satu jam.
+
+7. Buka `http://localhost:3000/api/graphql` atau Apollo Sandbox. Tambahkan
+   header `Authorization: Bearer <token>` saat menjalankan mutation.
+   Coba lagi tanpa header untuk melihat galat `UNAUTHENTICATED`.
+
+Alur login menggunakan authorization code GitHub dengan `state` dan PKCE.
+Server menukar code dengan access token, mengambil profil `/user`, lalu
+menerbitkan JWT aplikasi. Access token GitHub tidak dikirim ke client. Endpoint
+`/auth/login` dan `/auth/callback` adalah URL publik yang diteruskan ke
+API route Next.js.
 
 ## Contoh Operasi
 
@@ -89,6 +113,8 @@ query {
 ```
 
 ### Membuat Produk
+
+Jalankan setelah menambahkan header `Authorization`.
 
 ```graphql
 mutation {
@@ -185,3 +211,10 @@ tipe hasil, resolver, dan selection set harus didefinisikan secara konsisten.
 GraphQL tetap lebih fleksibel karena client dapat memilih field hasil yang
 dibutuhkan melalui satu endpoint. Keberhasilan mutation juga perlu diverifikasi
 dengan query ulang agar perubahan pada database benar-benar terbukti tersimpan.
+
+## Latihan Mandiri Sesi 07
+
+Screenshot mutation tanpa token dan refleksi singkat tersedia di
+[bukti-sesi07/README.md](./bukti-sesi07/README.md). Screenshot sukses masih
+memerlukan GitHub OAuth App dan login sungguhan; JWT dari respons callback
+tidak boleh disertakan dalam screenshot atau commit.

@@ -1,6 +1,7 @@
 import { ApolloServer } from "@apollo/server";
 import { startServerAndCreateNextHandler } from "@as-integrations/next";
 import { Pool } from "pg";
+import { getAuthUser, requireAuth } from "../../lib/auth";
 
 // ---------------------------------------------------------------
 // Koneksi ke Neon — WAJIB pakai connection string versi POOLED
@@ -131,7 +132,8 @@ const resolvers = {
   },
 
   Mutation: {
-    createProduk: async (_, { input }) => {
+    createProduk: async (_, { input }, context) => {
+      requireAuth(context);
       const result = await pool.query(
         `INSERT INTO produk (nama_produk, kategori, harga, stok)
          VALUES ($1, $2, $3, $4)
@@ -140,7 +142,8 @@ const resolvers = {
       );
       return result.rows[0];
     },
-    updateProduk: async (_, { id, input }) => {
+    updateProduk: async (_, { id, input }, context) => {
+      requireAuth(context);
       const result = await pool.query(
         `UPDATE produk
          SET nama_produk = COALESCE($1, nama_produk),
@@ -159,7 +162,8 @@ const resolvers = {
       );
       return result.rows[0] ?? null;
     },
-    deleteProduk: async (_, { id }) => {
+    deleteProduk: async (_, { id }, context) => {
+      requireAuth(context);
       const result = await pool.query("DELETE FROM produk WHERE id = $1", [
         id,
       ]);
@@ -222,7 +226,9 @@ const server = new ApolloServer({
   introspection: true, // wajib nyala supaya Apollo Sandbox dosen bisa introspeksi schema
 });
 
-const apolloHandler = startServerAndCreateNextHandler(server);
+const apolloHandler = startServerAndCreateNextHandler(server, {
+  context: async (req) => ({ user: getAuthUser(req) }),
+});
 
 // ---------------------------------------------------------------
 // Bungkus dengan CORS manual, karena Next.js API route tidak
@@ -237,7 +243,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Content-Type, Apollo-Require-Preflight",
+    "Content-Type, Authorization, Apollo-Require-Preflight",
   );
 
   if (req.method === "OPTIONS") {
