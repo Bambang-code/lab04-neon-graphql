@@ -7,7 +7,7 @@ Apollo Server, dan skema `pelanggan`, `produk`, serta `penjualan`.
 ## Identitas
 
 - Nama: Bambang Herlambang
-- NRP: 503024019
+- NRP: 5803024019
 
 ## Deployment
 
